@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 SUBMISSIONS_DIR = Path(__file__).resolve().parent.parent / "submissions"
 TOTAL_COUNTRIES = 8
 REQUIRED_FIELDS = {"name", "country", "lat", "lon", "photo"}
+EARTH_RADIUS_KM = 6371.0
+TRUE_TARGET = (55.931547, 37.518848)
 
 
 def load_entries():
@@ -57,6 +59,15 @@ def geographic_center(points):
     center_lon = math.atan2(y, x)
     center_lat = math.atan2(z, math.sqrt(x * x + y * y))
     return math.degrees(center_lat), math.degrees(center_lon)
+
+
+def haversine_km(point_a, point_b):
+    lat1, lon1 = map(math.radians, point_a)
+    lat2, lon2 = map(math.radians, point_b)
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(a))
 
 
 def reverse_geocode(lat, lon):
@@ -104,23 +115,29 @@ def run():
         return
 
     if n == 1:
+        distance_km = round(haversine_km((me["lat"], me["lon"]), TRUE_TARGET))
         print(
             f"Поздравляю, {me['name']}, ты первый завершил свою часть задания! "
-            f"Чтобы узнать секретик, придётся дождаться остальных :("
+            f"Чтобы узнать секретик, придётся дождаться остальных :(\n"
+            f"До истинной цели осталось {distance_km} километров!"
         )
         return
 
     lat, lon = geographic_center([(e["lat"], e["lon"]) for e in entries])
     address = reverse_geocode(lat, lon)
+    distance_km = round(haversine_km((lat, lon), TRUE_TARGET))
 
     if n < TOTAL_COUNTRIES:
         print(f"Поздравляю с завершением задания, {me['name']}! Вот секретик: {address}.")
         sys.stdout.flush()
         time.sleep(5)
         finished = ", ".join(e["name"] for e in entries)
-        print("Хмм... кажется это что-то не то :(")
+        print(f"Хмм... кажется это что-то не то :(\nДо истинной цели осталось {distance_km} километров!")
         print(f"Уже выполнили задания: {finished}")
         show_photos(entries)
     else:
-        print(f"Поздравляю! Вы успешно завершили задание! Секретное место: {address}. Как неожиданно :)")
+        print(
+            f"Поздравляю! Вы успешно завершили задание! Секретное место: {address}. Как неожиданно :)\n"
+            f"Ошибка составила всего {distance_km} километров!"
+        )
         show_photos(entries)
